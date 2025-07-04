@@ -5,7 +5,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQu
 from fpdf import FPDF
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-AD_TEXT = "🌟 @Tilmochgpt botimizni sinab ko‘ring — AI asosida ideal tarjima qiladi!"
+AD_TEXT = "🌟 @Tilmochgpt_bot ni sinab ko‘ring — AI yordamida tez va mukammal tarjima qiladi!"
 TEMP_DIR = "temp"
 os.makedirs(TEMP_DIR, exist_ok=True)
 
@@ -13,7 +13,7 @@ user_images = {}
 user_tasks = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("📌 Rasm(lar)ni yuboring. Bot 5 soniya kutib rasm to‘plamini qabul qiladi va PDF yaratishga tayyor bo‘ladi.")
+    await update.message.reply_text("📌 Rasm(lar)ni yuboring. Bot biroz kutib rasm to‘plamini qabul qiladi va PDF yaratishga tayyor bo‘ladi.")
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -61,7 +61,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("⚠ Rasm yubormagansiz.")
             return
 
-        await query.edit_message_text("✅ PDF tayyorlanmoqda. Iltimos, 30 soniya kuting.\n" + AD_TEXT)
+        await query.edit_message_text("✅ PDF tayyorlanmoqda. Iltimos, biroz  kuting.\n" + AD_TEXT)
 
         pdf_path = f"{TEMP_DIR}/{user_id}_output.pdf"
         pdf = FPDF()
