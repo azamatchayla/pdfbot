@@ -2,20 +2,18 @@ import os
 import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
-from PIL import Image
 from fpdf import FPDF
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-
-AD_TEXT = "✍ Tarjimon botimizni sinab ko‘ring: @Tilmochgpt_bot"
-
+AD_TEXT = "🌟 @Tilmochgpt botimizni sinab ko‘ring — AI asosida ideal tarjima qiladi!"
 TEMP_DIR = "temp"
 os.makedirs(TEMP_DIR, exist_ok=True)
 
 user_images = {}
+user_tasks = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("📌 Rasm(lar)ni yuboring. Tayyor bo‘lgach, 'PDF yaratish' tugmasini bosing.")
+    await update.message.reply_text("📌 Rasm(lar)ni yuboring. Bot 5 soniya kutib rasm to‘plamini qabul qiladi va PDF yaratishga tayyor bo‘ladi.")
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -31,13 +29,27 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_images.setdefault(user_id, []).append(file_path)
 
-    await update.message.reply_text(f"✅ Rasm qabul qilindi: {os.path.basename(file_path)}")
+    # Agar oldingi task bo'lsa, bekor qilamiz
+    if user_id in user_tasks:
+        user_tasks[user_id].cancel()
 
-    # Tugma faqat birinchi rasm kelganda chiqadi
-    if len(user_images[user_id]) == 1:
-        keyboard = [[InlineKeyboardButton("📄 PDF yaratish", callback_data="create_pdf")]]
+    # Yangi task ishga tushiramiz
+    task = asyncio.create_task(schedule_summary(update, context, user_id))
+    user_tasks[user_id] = task
+
+async def schedule_summary(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id):
+    try:
+        await asyncio.sleep(5)
+        count = len(user_images.get(user_id, []))
+        text = (
+            f"✅ {count} ta rasm qabul qilindi.\n"
+            f"{AD_TEXT}"
+        )
+        keyboard = [[InlineKeyboardButton("📄 PDF yaratishni boshlash", callback_data="create_pdf")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text("📌 Hamma rasmni yuborib bo'lgach, tugmani bosing.", reply_markup=reply_markup)
+        await context.bot.send_message(chat_id=user_id, text=text, reply_markup=reply_markup)
+    except asyncio.CancelledError:
+        pass  # Agar task bekor qilinsa, hech narsa qilmaymiz
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -49,8 +61,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("⚠ Rasm yubormagansiz.")
             return
 
-        # Reklama ko'rsatamiz
-        await query.edit_message_text(AD_TEXT)
+        await query.edit_message_text("✅ PDF tayyorlanmoqda. Iltimos, 30 soniya kuting.\n" + AD_TEXT)
 
         pdf_path = f"{TEMP_DIR}/{user_id}_output.pdf"
         pdf = FPDF()
@@ -63,21 +74,18 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await context.bot.send_document(chat_id=user_id, document=open(pdf_path, 'rb'))
 
-        # Tozalash
         for img_path in user_images[user_id]:
             os.remove(img_path)
         os.remove(pdf_path)
         user_images[user_id] = []
 
-        await context.bot.send_message(chat_id=user_id, text="✅ PDF fayl yuborildi va vaqtinchalik fayllar o'chirildi.")
+        await context.bot.send_message(chat_id=user_id, text="✅ PDF yuborildi va vaqtinchalik fayllar o‘chirildi.")
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(CallbackQueryHandler(button_handler))
-
     app.run_polling()
 
 if __name__ == "__main__":
