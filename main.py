@@ -1,6 +1,4 @@
 import os
-print(f"BOT_TOKEN: {os.getenv('BOT_TOKEN')}")
-import os
 import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
@@ -33,9 +31,13 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_images.setdefault(user_id, []).append(file_path)
 
-    keyboard = [[InlineKeyboardButton("📄 PDF yaratish", callback_data="create_pdf")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(f"✅ Rasm qabul qilindi: {os.path.basename(file_path)}", reply_markup=reply_markup)
+    await update.message.reply_text(f"✅ Rasm qabul qilindi: {os.path.basename(file_path)}")
+
+    # Tugma faqat birinchi rasm kelganda chiqadi
+    if len(user_images[user_id]) == 1:
+        keyboard = [[InlineKeyboardButton("📄 PDF yaratish", callback_data="create_pdf")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text("📌 Hamma rasmni yuborib bo'lgach, tugmani bosing.", reply_markup=reply_markup)
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -47,10 +49,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("⚠ Rasm yubormagansiz.")
             return
 
-        # Reklama ko‘rsatamiz
+        # Reklama ko'rsatamiz
         await query.edit_message_text(AD_TEXT)
 
-        # Shu paytda PDF tayyorlashni boshlaymiz
         pdf_path = f"{TEMP_DIR}/{user_id}_output.pdf"
         pdf = FPDF()
         for img_path in user_images[user_id]:
@@ -58,19 +59,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pdf.image(img_path, x=10, y=10, w=190)
         pdf.output(pdf_path)
 
-        # Reklamani ko‘rsatish vaqti
         await asyncio.sleep(30)
 
-        # PDF yuboriladi
         await context.bot.send_document(chat_id=user_id, document=open(pdf_path, 'rb'))
 
-        # Vaqtinchalik fayllarni o‘chirish
+        # Tozalash
         for img_path in user_images[user_id]:
             os.remove(img_path)
         os.remove(pdf_path)
         user_images[user_id] = []
 
-        await context.bot.send_message(chat_id=user_id, text="✅ PDF fayl yuborildi va vaqtinchalik fayllar o‘chirildi.")
+        await context.bot.send_message(chat_id=user_id, text="✅ PDF fayl yuborildi va vaqtinchalik fayllar o'chirildi.")
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
